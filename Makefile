@@ -32,6 +32,7 @@ run : main
 
 
 OBS+=main.o
+OBS+=kbhit.o
 
 
 

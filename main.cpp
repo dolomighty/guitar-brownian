@@ -1,6 +1,7 @@
 
 #include <stdlib.h>
 #include <SDL2/SDL.h>
+#include "dyn/kbhit.h"
 
 #undef NDEBUG
 #include <assert.h>
@@ -16,7 +17,7 @@ typedef struct GEN {
     float lp;
 } GEN;
 
-GEN a,b;
+GEN gen[3];
 
 
 //void synth_block( GEN *g ){
@@ -115,10 +116,20 @@ void audio_cb_F32_stereo( void *userdata, Uint8 *stream, int len_bytes ){
     } *frame = (struct LR *)stream;
     int len_frames = len_bytes / sizeof(*frame);
     for(; len_frames>0; len_frames--, frame++ ){
-        frame->L = synth(&a);
-        frame->R = synth(&b);
+        float A = synth(&gen[0]);
+        frame->L = A+synth(&gen[1]);
+        frame->R = A+synth(&gen[2]);
     }
 }
+
+
+
+
+float key2freq( int key ){
+    // da nota midi a frequenza in Hz
+    return 6.875 * pow( 2, (3.0+key)/12 );
+}
+
 
 
 
@@ -139,16 +150,45 @@ int main( int argc, char *argv[]){
 
     assert( SDL_OpenAudio( &want, NULL ) >= 0 );
   
-    synth_init( &a, want.freq/55 );   // A3
-    synth_init( &b, want.freq/(55*3/4) );
+    synth_init( &gen[0], want.freq*4/key2freq(60+0));
+    synth_init( &gen[1], want.freq*4/key2freq(60+7));
+    synth_init( &gen[2], want.freq*4/key2freq(60+12));
 
     SDL_PauseAudio(0);  // start audio playing.
 
-    loop();
-    
-//    while(1){
-//        if('q'==getchar())break;
-//    }
+    bool esci = false;
+    while(!esci){
+        SDL_Delay(10);
+        if(kbhit()){
+            int c = getchar();
+            switch(c){
+                case 'q':
+                    esci=true;
+                    break; 
+
+#define C(K,N) \
+                case K: \
+                    synth_init( &gen[0], want.freq*4/key2freq(N+0)); \
+                    synth_init( &gen[1], want.freq*4/key2freq(N+7)); \
+                    synth_init( &gen[2], want.freq*4/key2freq(N+12)); \
+                    break;
+
+                C('z',60);
+                C('s',61);
+                C('x',62);
+                C('d',63);
+                C('c',64);
+                C('v',65);
+                C('g',66);
+                C('b',67);
+                C('h',68);
+                C('n',69);
+                C('j',70);
+                C('m',71);
+#undef C
+            }
+        }
+    }
 
     SDL_CloseAudio();
 
